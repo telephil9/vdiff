@@ -44,6 +44,7 @@ int offset;
 Line **lines;
 int lsize;
 int lcount;
+const char ellipsis[] = "...";
 
 void
 drawline(Rectangle r, Line *l)
@@ -58,7 +59,10 @@ drawline(Rectangle r, Line *l)
 	for(s = l->s; *s; s++){
 		if(*s == '\t')
 			p = string(screen, p, display->black, ZP, font, "    ");
-		else
+		else if((p.x+Hpadding+stringwidth(font, " ")+stringwidth(font, ellipsis)>=textr.max.x)){
+			string(screen, p, display->black, ZP, font, ellipsis);
+			break;
+		}else
 			p = stringn(screen, p, display->black, ZP, font, s, 1);
 	}
 }
