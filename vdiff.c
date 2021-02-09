@@ -1,5 +1,6 @@
 #include <u.h>
 #include <libc.h>
+#include <plumb.h>
 #include <draw.h>
 #include <event.h>
 #include <keyboard.h>
@@ -10,6 +11,8 @@ typedef struct Line Line;
 struct Line {
 	int t;
 	char *s;
+	char *f;
+	int l;
 };
 
 enum
@@ -103,6 +106,19 @@ scroll(int off)
 	redraw();
 }
 
+int
+indexat(Point p)
+{
+	int n;
+
+	if (!ptinrect(p, textr))
+		return -1;
+	n = (p.y - textr.min.y) / lineh;
+	if ((n+offset) >= lcount)
+		return -1;
+	return n;
+}
+
 void
 eresized(int new)
 {
@@ -154,7 +170,7 @@ linetype(char *text)
 }
 
 Line*
-parseline(char *s)
+parseline(char *f, int n, char *s)
 {
 	Line *l;
 
@@ -163,6 +179,26 @@ parseline(char *s)
 		sysfatal("malloc: %r");
 	l->t = linetype(s);
 	l->s = s;
+	l->l = n;
+	if(l->t != Lfile && l->t != Lsep)
+		l->f = f;
+	else
+		l->f = nil;
+	return l;
+}
+
+int
+lineno(char *s)
+{
+	char *p, *t[5];
+	int n, l;
+
+	p = strdup(s);
+	n = tokenize(p, t, 5);
+	if(n<=0)
+		return -1;
+	l = atoi(t[2]);
+	free(p);
 	return l;
 }
 
@@ -170,8 +206,13 @@ void
 parse(int fd)
 {
 	Biobuf *bp;
+	Line *l;
 	char *s;
+	char *f;
+	int n;
 
+	n = 0;
+	f = nil;
 	lsize = 64;
 	lcount = 0;
 	lines = malloc(lsize * sizeof *lines);
@@ -184,7 +225,14 @@ parse(int fd)
 		s = Brdstr(bp, '\n', 1);
 		if(s==nil)
 			break;
-		lines[lcount++] = parseline(s);
+		l = parseline(f, n, s);
+		if(l->t == Lfile && l->s[0] == '+')
+			f = l->s+4;
+		else if(l->t == Lsep)
+			n = lineno(l->s);
+		else if(l->t == Ladd || l->t == Lnone)
+			++n;
+		lines[lcount++] = l;
 		if(lcount>=lsize){
 			lsize *= 2;
 			lines = realloc(lines, lsize*sizeof *lines);
@@ -195,10 +243,26 @@ parse(int fd)
 }
 
 void
+plumb(char *f, int l)
+{
+	USED(l);
+	int fd;
+	char wd[256], addr[300]={0};
+
+	fd = plumbopen("send", OWRITE);
+	if(fd<0)
+		return;
+	getwd(wd, sizeof wd);
+	snprint(addr, sizeof addr, "%s:%d", f, l);
+	plumbsendtext(fd, "vdiff", "edit", wd, addr);
+	close(fd);
+}
+
+void
 main(void)
 {
 	Event ev;
-	int e;
+	int e, n;
 
 	parse(0);
 	if(initdraw(nil, nil, "vdiff")<0)
@@ -210,7 +274,11 @@ main(void)
 		e = event(&ev);
 		switch(e){
 		case Emouse:
-			if(ev.mouse.buttons&8)
+			if(ev.mouse.buttons&4){
+				n = indexat(ev.mouse.xy);
+				if(n>=0 && lines[n+offset]->f != nil)
+					plumb(lines[n+offset]->f, lines[n+offset]->l);
+			}else if(ev.mouse.buttons&8)
 				scroll(-10);
 			else if(ev.mouse.buttons&16)
 				scroll(10);

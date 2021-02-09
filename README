@@ -1,3 +1,4 @@
 A git/diff output viewer.
+Right-clicking a diff line will open the file at the given line in the editor
 
 Usage: git/diff |vdiff
