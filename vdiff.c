@@ -274,6 +274,25 @@ main(void)
 		e = event(&ev);
 		switch(e){
 		case Emouse:
+			if(ev.mouse.buttons&4 && ptinrect(ev.mouse.xy, scrollr)){
+				n = (ev.mouse.xy.y - scrollr.min.y) / lineh;
+				if(n<lcount-offset){
+					scroll(n);
+				} else {
+					scroll(lcount-offset);
+				}
+				break;
+			}
+			if(ev.mouse.buttons&1 && ptinrect(ev.mouse.xy, scrollr)){
+				n = (ev.mouse.xy.y - scrollr.min.y) / lineh;
+				if(-n<lcount-offset){
+					scroll(-n);
+				} else {
+					scroll(-lcount+offset);
+				}
+				break;
+			}
+
 			if(ev.mouse.buttons&4){
 				n = indexat(ev.mouse.xy);
 				if(n>=0 && lines[n+offset]->f != nil)
