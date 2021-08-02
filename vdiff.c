@@ -285,6 +285,7 @@ main(void)
 			break;
 		case Ekeyboard:
 			switch(ev.kbdc){
+			case 'q':
 			case Kdel:
 				goto End;
 				break;
