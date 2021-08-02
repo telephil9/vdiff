@@ -207,10 +207,10 @@ parse(int fd)
 {
 	Biobuf *bp;
 	Line *l;
-	char *s;
-	char *f;
-	int n;
+	char *s, *f, *t;
+	int n, ab;
 
+	ab = 0;
 	n = 0;
 	f = nil;
 	lsize = 64;
@@ -226,9 +226,16 @@ parse(int fd)
 		if(s==nil)
 			break;
 		l = parseline(f, n, s);
-		if(l->t == Lfile && l->s[0] == '+')
+		if(l->t == Lfile && l->s[0] == '-' && strncmp(l->s+4, "a/", 2)==0)
+			ab = 1;
+		if(l->t == Lfile && l->s[0] == '+'){
 			f = l->s+4;
-		else if(l->t == Lsep)
+			if(ab && strncmp(f, "b/", 2)==0)
+				f += 1;
+			t = strchr(f, '\t');
+			if(t!=nil)
+				*t = 0;
+		}else if(l->t == Lsep)
 			n = lineno(l->s);
 		else if(l->t == Ladd || l->t == Lnone)
 			++n;
