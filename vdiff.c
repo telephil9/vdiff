@@ -41,6 +41,7 @@ Rectangle listr;
 Rectangle textr;
 Image *cols[Ncols];
 Image *scrollbg;
+int scrollsize;
 int lineh;
 int nlines;
 int offset;
@@ -133,6 +134,7 @@ eresized(int new)
 	lineh = Vpadding+font->height+Vpadding;
 	nlines = Dy(textr)/lineh;
 	offset = 0;
+	scrollsize = mousescrollsize(nlines);
 	redraw();
 }
 
@@ -309,9 +311,9 @@ main(void)
 				if(n>=0 && lines[n+offset]->f != nil)
 					plumb(lines[n+offset]->f, lines[n+offset]->l);
 			}else if(ev.mouse.buttons&8)
-				scroll(-10);
+				scroll(-scrollsize);
 			else if(ev.mouse.buttons&16)
-				scroll(10);
+				scroll(scrollsize);
 			break;
 		case Ekeyboard:
 			switch(ev.kbdc){
