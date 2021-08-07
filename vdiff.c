@@ -272,6 +272,10 @@ main(void)
 	int e, n;
 
 	parse(0);
+	if(lcount==0){
+		fprint(2, "no diff\n");
+		exits(nil);
+	}
 	if(initdraw(nil, nil, "vdiff")<0)
 		sysfatal("initdraw: %r");
 	initcols();
