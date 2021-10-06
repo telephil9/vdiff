@@ -55,6 +55,7 @@ drawline(Rectangle r, Line *l)
 {
 	Image *bg;
 	Point p;
+	Rune  rn;
 	char *s;
 
 	bg = cols[l->t];
@@ -66,8 +67,10 @@ drawline(Rectangle r, Line *l)
 		else if((p.x+Hpadding+stringwidth(font, " ")+stringwidth(font, ellipsis)>=textr.max.x)){
 			string(screen, p, display->black, ZP, font, ellipsis);
 			break;
-		}else
-			p = stringn(screen, p, display->black, ZP, font, s, 1);
+		}else{
+			s += chartorune(&rn, s) - 1;
+			p = runestringn(screen, p, display->black, ZP, font, &rn, 1);
+		}
 	}
 }
 
