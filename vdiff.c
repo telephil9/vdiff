@@ -149,14 +149,14 @@ initcols(void)
 	Rectangle cr;
 
 	cr = Rect(0, 0, 1, 1);
-	bg			= allocimage(display, cr, screen->chan, 1, 0xffffffff);
-	fg			= allocimage(display, cr, screen->chan, 1, 0x000000ff);
-	cols[Lfile] = allocimage(display, cr, screen->chan, 1, 0xefefefff);
-	cols[Lsep]  = allocimage(display, cr, screen->chan, 1, 0xeaffffff);
-	cols[Ladd]  = allocimage(display, cr, screen->chan, 1, 0xe6ffedff);
-	cols[Ldel]  = allocimage(display, cr, screen->chan, 1, 0xffeef0ff);
+	bg			= allocimage(display, cr, screen->chan, 1, 0x282828ff);
+	fg			= allocimage(display, cr, screen->chan, 1, 0xebdbb2ff);
+	cols[Lfile] = allocimage(display, cr, screen->chan, 1, 0xa89984ff);
+	cols[Lsep]  = allocimage(display, cr, screen->chan, 1, 0x458588ff);
+	cols[Ladd]  = allocimage(display, cr, screen->chan, 1, 0x98971aff);
+	cols[Ldel]  = allocimage(display, cr, screen->chan, 1, 0xcc241dff);
 	cols[Lnone] = bg;
-	scrollbg    = allocimage(display, cr, screen->chan, 1, 0x999999ff);
+	scrollbg    = allocimage(display, cr, screen->chan, 1, 0x504945ff);
 }
 
 int
@@ -167,9 +167,10 @@ linetype(char *text)
 	type = Lnone;
 	if(strncmp(text, "+++", 3)==0)
 		type = Lfile;
-	else if(strncmp(text, "---", 3)==0)
-		type = Lfile;
-	else if(strncmp(text, "@@", 2)==0)
+	else if(strncmp(text, "---", 3)==0){
+		if(strlen(text) > 4)
+			type = Lfile;
+	}else if(strncmp(text, "@@", 2)==0)
 		type = Lsep;
 	else if(strncmp(text, "+", 1)==0)
 		type = Ladd;
