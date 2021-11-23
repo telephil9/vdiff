@@ -40,6 +40,8 @@ Rectangle scrposr;
 Rectangle listr;
 Rectangle textr;
 Image *cols[Ncols];
+Image *bg;
+Image *fg;
 Image *scrollbg;
 int scrollsize;
 int lineh;
@@ -63,13 +65,13 @@ drawline(Rectangle r, Line *l)
 	p = Pt(r.min.x + Hpadding, r.min.y + (Dy(r)-font->height)/2);
 	for(s = l->s; *s; s++){
 		if(*s == '\t')
-			p = string(screen, p, display->black, ZP, font, "    ");
+			p = string(screen, p, fg, ZP, font, "    ");
 		else if((p.x+Hpadding+stringwidth(font, " ")+stringwidth(font, ellipsis)>=textr.max.x)){
-			string(screen, p, display->black, ZP, font, ellipsis);
+			string(screen, p, fg, ZP, font, ellipsis);
 			break;
 		}else{
 			s += chartorune(&rn, s) - 1;
-			p = runestringn(screen, p, display->black, ZP, font, &rn, 1);
+			p = runestringn(screen, p, fg, ZP, font, &rn, 1);
 		}
 	}
 }
@@ -80,7 +82,7 @@ redraw(void)
 	Rectangle lr;
 	int i, h, y;
 
-	draw(screen, sr, display->white, nil, ZP);
+	draw(screen, sr, bg, nil, ZP);
 	draw(screen, scrollr, scrollbg, nil, ZP);
 	if(lcount>0){
 		h = ((double)nlines/lcount)*Dy(scrollr);
@@ -88,7 +90,7 @@ redraw(void)
 		scrposr = Rect(scrollr.min.x, scrollr.min.y+y, scrollr.max.x-1, scrollr.min.y+y+h);
 	}else
 		scrposr = Rect(scrollr.min.x, scrollr.min.y, scrollr.max.x-1, scrollr.max.y);
-	draw(screen, scrposr, display->white, nil, ZP);
+	draw(screen, scrposr, bg, nil, ZP);
 	for(i=0; i<nlines && offset+i<lcount; i++){
 		lr = Rect(textr.min.x, textr.min.y+i*lineh, textr.max.x, textr.min.y+(i+1)*lineh);
 		drawline(lr, lines[offset+i]);
@@ -147,11 +149,13 @@ initcols(void)
 	Rectangle cr;
 
 	cr = Rect(0, 0, 1, 1);
+	bg			= allocimage(display, cr, screen->chan, 1, 0xffffffff);
+	fg			= allocimage(display, cr, screen->chan, 1, 0x000000ff);
 	cols[Lfile] = allocimage(display, cr, screen->chan, 1, 0xefefefff);
 	cols[Lsep]  = allocimage(display, cr, screen->chan, 1, 0xeaffffff);
 	cols[Ladd]  = allocimage(display, cr, screen->chan, 1, 0xe6ffedff);
 	cols[Ldel]  = allocimage(display, cr, screen->chan, 1, 0xffeef0ff);
-	cols[Lnone] = display->white;
+	cols[Lnone] = bg;
 	scrollbg    = allocimage(display, cr, screen->chan, 1, 0x999999ff);
 }
 
