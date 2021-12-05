@@ -7,12 +7,18 @@
 #include <bio.h>
 
 typedef struct Line Line;
+typedef struct Col Col;
 
 struct Line {
 	int t;
 	char *s;
 	char *f;
 	int l;
+};
+
+struct Col {
+	Image *bg;
+	Image *fg;
 };
 
 enum
@@ -39,10 +45,8 @@ Rectangle scrollr;
 Rectangle scrposr;
 Rectangle listr;
 Rectangle textr;
-Image *cols[Ncols];
-Image *bg;
-Image *fg;
-Image *scrollbg;
+Col cols[Ncols];
+Col scrlcol;
 int scrollsize;
 int lineh;
 int nlines;
@@ -57,27 +61,25 @@ const char ellipsis[] = "...";
 void
 drawline(Rectangle r, Line *l)
 {
-	Image *bg;
 	Point p;
 	Rune  rn;
 	char *s;
 	int off;
 
-	bg = cols[l->t];
-	draw(screen, r, bg, nil, ZP);
+	draw(screen, r, cols[l->t].bg, nil, ZP);
 	p = Pt(r.min.x + Hpadding, r.min.y + (Dy(r)-font->height)/2);
 	off = Δpan / stringwidth(font, " ");
 	for(s = l->s; *s; off--){
 		if(*s == '\t'){
-			p = string(screen, p, fg, ZP, font, "    ");
+			p = string(screen, p, cols[l->t].fg, ZP, font, "    ");
 			s++;
 		}else if((p.x+Hpadding+stringwidth(font, " ")+stringwidth(font, ellipsis)>=textr.max.x)){
-			string(screen, p, fg, ZP, font, ellipsis);
+			string(screen, p, cols[l->t].fg, ZP, font, ellipsis);
 			break;
 		}else{
 			s += chartorune(&rn, s);
 			if(off <= 0)
-				p = runestringn(screen, p, fg, ZP, font, &rn, 1);
+				p = runestringn(screen, p, cols[l->t].fg, ZP, font, &rn, 1);
 		}
 	}
 }
@@ -88,15 +90,15 @@ redraw(void)
 	Rectangle lr;
 	int i, h, y;
 
-	draw(screen, sr, bg, nil, ZP);
-	draw(screen, scrollr, scrollbg, nil, ZP);
+	draw(screen, sr, cols[Lnone].bg, nil, ZP);
+	draw(screen, scrollr, scrlcol.bg, nil, ZP);
 	if(lcount>0){
 		h = ((double)nlines/lcount)*Dy(scrollr);
 		y = ((double)offset/lcount)*Dy(scrollr);
 		scrposr = Rect(scrollr.min.x, scrollr.min.y+y, scrollr.max.x-1, scrollr.min.y+y+h);
 	}else
 		scrposr = Rect(scrollr.min.x, scrollr.min.y, scrollr.max.x-1, scrollr.max.y);
-	draw(screen, scrposr, bg, nil, ZP);
+	draw(screen, scrposr, scrlcol.fg, nil, ZP);
 	for(i=0; i<nlines && offset+i<lcount; i++){
 		lr = Rect(textr.min.x, textr.min.y+i*lineh, textr.max.x, textr.min.y+(i+1)*lineh);
 		drawline(lr, lines[offset+i]);
@@ -165,19 +167,21 @@ eresized(int new)
 }
 
 void
+initcol(Col *c, ulong fg, ulong bg)
+{
+	c->fg = allocimage(display, Rect(0,0,1,1), screen->chan, 1, fg);
+	c->bg = allocimage(display, Rect(0,0,1,1), screen->chan, 1, bg);
+}
+
+void
 initcols(void)
 {
-	Rectangle cr;
-
-	cr = Rect(0, 0, 1, 1);
-	bg			= allocimage(display, cr, screen->chan, 1, 0x282828ff);
-	fg			= allocimage(display, cr, screen->chan, 1, 0xebdbb2ff);
-	cols[Lfile] = allocimage(display, cr, screen->chan, 1, 0xa89984ff);
-	cols[Lsep]  = allocimage(display, cr, screen->chan, 1, 0x458588ff);
-	cols[Ladd]  = allocimage(display, cr, screen->chan, 1, 0x98971aff);
-	cols[Ldel]  = allocimage(display, cr, screen->chan, 1, 0xcc241dff);
-	cols[Lnone] = bg;
-	scrollbg    = allocimage(display, cr, screen->chan, 1, 0x504945ff);
+	initcol(&scrlcol,     DWhite, 0x999999FF);
+	initcol(&cols[Lfile], DBlack, 0xEFEFEFFF);
+	initcol(&cols[Lsep],  DBlack, 0xEAFFFFFF);
+	initcol(&cols[Ladd],  DBlack, 0xE6FFEDFF);
+	initcol(&cols[Ldel],  DBlack, 0xFFEEF0FF);
+	initcol(&cols[Lnone], DBlack, DWhite);
 }
 
 int
