@@ -341,6 +341,12 @@ main(void)
 			case Kpgdown:
 				scroll(nlines);
 				break;
+			case Kup:
+				scroll(-1);
+				break;
+			case Kdown:
+				scroll(1);
+				break;
 			}
 			break;
 		}
