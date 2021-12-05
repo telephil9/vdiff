@@ -265,8 +265,11 @@ parse(int fd)
 			ab = 1;
 		if(l->t == Lfile && l->s[0] == '+'){
 			f = l->s+4;
-			if(ab && strncmp(f, "b/", 2)==0)
+			if(ab && strncmp(f, "b/", 2)==0){
 				f += 1;
+				if(access(f, AEXIST) < 0)
+					f += 1;
+			}
 			t = strchr(f, '\t');
 			if(t!=nil)
 				*t = 0;
