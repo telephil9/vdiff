@@ -138,8 +138,9 @@ eresized(int new)
 	textr = insetrect(listr, Margin);
 	lineh = Vpadding+font->height+Vpadding;
 	nlines = Dy(textr)/lineh;
-	offset = 0;
 	scrollsize = mousescrollsize(nlines);
+	if(offset > 0 && offset+nlines>lcount)
+		offset = lcount-nlines+1;
 	redraw();
 }
 
