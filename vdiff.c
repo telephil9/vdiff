@@ -50,6 +50,8 @@ int offset;
 Line **lines;
 int lsize;
 int lcount;
+int maxlength;
+int Δpan;
 const char ellipsis[] = "...";
 
 void
@@ -59,19 +61,23 @@ drawline(Rectangle r, Line *l)
 	Point p;
 	Rune  rn;
 	char *s;
+	int off;
 
 	bg = cols[l->t];
 	draw(screen, r, bg, nil, ZP);
 	p = Pt(r.min.x + Hpadding, r.min.y + (Dy(r)-font->height)/2);
-	for(s = l->s; *s; s++){
-		if(*s == '\t')
+	off = Δpan / stringwidth(font, " ");
+	for(s = l->s; *s; off--){
+		if(*s == '\t'){
 			p = string(screen, p, fg, ZP, font, "    ");
-		else if((p.x+Hpadding+stringwidth(font, " ")+stringwidth(font, ellipsis)>=textr.max.x)){
+			s++;
+		}else if((p.x+Hpadding+stringwidth(font, " ")+stringwidth(font, ellipsis)>=textr.max.x)){
 			string(screen, p, fg, ZP, font, ellipsis);
 			break;
 		}else{
-			s += chartorune(&rn, s) - 1;
-			p = runestringn(screen, p, fg, ZP, font, &rn, 1);
+			s += chartorune(&rn, s);
+			if(off <= 0)
+				p = runestringn(screen, p, fg, ZP, font, &rn, 1);
 		}
 	}
 }
@@ -95,6 +101,20 @@ redraw(void)
 		lr = Rect(textr.min.x, textr.min.y+i*lineh, textr.max.x, textr.min.y+(i+1)*lineh);
 		drawline(lr, lines[offset+i]);
 	}
+}
+
+void
+pan(int off)
+{
+	int max;
+
+	max = Hpadding + maxlength * stringwidth(font, " ") + 2 * stringwidth(font, ellipsis) - Dx(textr);
+	Δpan += off * stringwidth(font, " ");
+	if(Δpan < 0 || max <= 0)
+		Δpan = 0;
+	else if(Δpan > max)
+		Δpan = max;
+	redraw();
 }
 
 void
@@ -184,6 +204,7 @@ Line*
 parseline(char *f, int n, char *s)
 {
 	Line *l;
+	int len;
 
 	l = malloc(sizeof *l);
 	if(l==nil)
@@ -195,6 +216,9 @@ parseline(char *f, int n, char *s)
 		l->f = f;
 	else
 		l->f = nil;
+	len = strlen(s);
+	if(len > maxlength)
+		maxlength = len;
 	return l;
 }
 
@@ -347,6 +371,12 @@ main(void)
 				break;
 			case Kdown:
 				scroll(1);
+				break;
+			case Kleft:
+				pan(-4);
+				break;
+			case Kright:
+				pan(4);
 				break;
 			}
 			break;
