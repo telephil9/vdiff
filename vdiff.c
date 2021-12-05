@@ -174,14 +174,23 @@ initcol(Col *c, ulong fg, ulong bg)
 }
 
 void
-initcols(void)
+initcols(int black)
 {
-	initcol(&scrlcol,     DWhite, 0x999999FF);
-	initcol(&cols[Lfile], DBlack, 0xEFEFEFFF);
-	initcol(&cols[Lsep],  DBlack, 0xEAFFFFFF);
-	initcol(&cols[Ladd],  DBlack, 0xE6FFEDFF);
-	initcol(&cols[Ldel],  DBlack, 0xFFEEF0FF);
-	initcol(&cols[Lnone], DBlack, DWhite);
+	if(black){
+		initcol(&scrlcol,     0x22272EFF, 0xADBAC7FF);
+		initcol(&cols[Lfile], 0xADBAC7FF, 0x2D333BFF);
+		initcol(&cols[Lsep],  0xADBAC7FF, 0x263549FF);
+		initcol(&cols[Ladd],  0xADBAC7FF, 0x273732FF);
+		initcol(&cols[Ldel],  0xADBAC7FF, 0x3F2D32FF);
+		initcol(&cols[Lnone], 0xADBAC7FF, 0x22272EFF);
+	}else{
+		initcol(&scrlcol,     DWhite, 0x999999FF);
+		initcol(&cols[Lfile], DBlack, 0xEFEFEFFF);
+		initcol(&cols[Lsep],  DBlack, 0xEAFFFFFF);
+		initcol(&cols[Ladd],  DBlack, 0xE6FFEDFF);
+		initcol(&cols[Ldel],  DBlack, 0xFFEEF0FF);
+		initcol(&cols[Lnone], DBlack, DWhite);
+	}
 }
 
 int
@@ -308,10 +317,27 @@ plumb(char *f, int l)
 }
 
 void
-main(void)
+usage(void)
+{
+	fprint(2, "%s [-b]\n", argv0);
+	exits("usage");
+}
+
+void
+main(int argc, char *argv[])
 {
 	Event ev;
-	int e, n;
+	int e, n, b;
+
+	b = 0;
+	ARGBEGIN{
+	case 'b':
+		b = 1;
+		break;
+	default:
+		usage();
+		break;
+	}ARGEND;
 
 	parse(0);
 	if(lcount==0){
@@ -320,7 +346,7 @@ main(void)
 	}
 	if(initdraw(nil, nil, "vdiff")<0)
 		sysfatal("initdraw: %r");
-	initcols();
+	initcols(b);
 	einit(Emouse|Ekeyboard);
 	eresized(0);
 	for(;;){
