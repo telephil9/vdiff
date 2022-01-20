@@ -64,15 +64,19 @@ drawline(Rectangle r, Line *l)
 	Point p;
 	Rune  rn;
 	char *s;
-	int off;
+	int off, tab, nc;
 
 	draw(screen, r, cols[l->t].bg, nil, ZP);
 	p = Pt(r.min.x + Hpadding, r.min.y + (Dy(r)-font->height)/2);
 	off = Δpan / stringwidth(font, " ");
-	for(s = l->s; *s; off--){
+	for(s = l->s, nc = 0, tab = 0; *s; nc++, tab--, off--){
 		if(*s == '\t'){
-			p = string(screen, p, cols[l->t].fg, ZP, font, "    ");
+			tab = 4 - nc % 4;
 			s++;
+		}
+		if(tab > 0){
+			if(off <= 0)
+				p = runestring(screen, p, cols[l->t].bg, ZP, font, L"█");
 		}else if((p.x+Hpadding+stringwidth(font, " ")+stringwidth(font, ellipsis)>=textr.max.x)){
 			string(screen, p, cols[l->t].fg, ZP, font, ellipsis);
 			break;
@@ -353,25 +357,29 @@ main(int argc, char *argv[])
 		e = event(&ev);
 		switch(e){
 		case Emouse:
-			if(ev.mouse.buttons&4 && ptinrect(ev.mouse.xy, scrollr)){
-				n = (ev.mouse.xy.y - scrollr.min.y) / lineh;
-				if(n<lcount-offset){
-					scroll(n);
-				} else {
-					scroll(lcount-offset);
+			if(ptinrect(ev.mouse.xy, scrollr)){
+				if(ev.mouse.buttons&1){
+					n = (ev.mouse.xy.y - scrollr.min.y) / lineh;
+					if(-n<lcount-offset){
+						scroll(-n);
+					} else {
+						scroll(-lcount+offset);
+					}
+					break;
+				}else if(ev.mouse.buttons&2){
+					n = (ev.mouse.xy.y - scrollr.min.y) * lcount / Dy(scrollr);
+					offset = n;
+					redraw();
+				}else if(ev.mouse.buttons&4){
+					n = (ev.mouse.xy.y - scrollr.min.y) / lineh;
+					if(n<lcount-offset){
+						scroll(n);
+					} else {
+						scroll(lcount-offset);
+					}
+					break;
 				}
-				break;
 			}
-			if(ev.mouse.buttons&1 && ptinrect(ev.mouse.xy, scrollr)){
-				n = (ev.mouse.xy.y - scrollr.min.y) / lineh;
-				if(-n<lcount-offset){
-					scroll(-n);
-				} else {
-					scroll(-lcount+offset);
-				}
-				break;
-			}
-
 			if(ev.mouse.buttons&4){
 				n = indexat(ev.mouse.xy);
 				if(n>=0 && lines[n+offset]->f != nil)
