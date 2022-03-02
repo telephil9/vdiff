@@ -69,8 +69,8 @@ drawline(Rectangle r, Line *l)
 	draw(screen, r, cols[l->t].bg, nil, ZP);
 	p = Pt(r.min.x + Hpadding, r.min.y + (Dy(r)-font->height)/2);
 	off = Δpan / stringwidth(font, " ");
-	for(s = l->s, nc = 0, tab = 0; *s; nc++, tab--, off--){
-		if(*s == '\t'){
+	for(s = l->s, nc = -1, tab = 0; *s; nc++, tab--, off--){
+		if(tab <= 0 && *s == '\t'){
 			tab = 4 - nc % 4;
 			s++;
 		}
