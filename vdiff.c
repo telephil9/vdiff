@@ -181,12 +181,12 @@ void
 initcols(int black)
 {
 	if(black){
-		initcol(&scrlcol,     0x22272EFF, 0xADBAC7FF);
-		initcol(&cols[Lfile], 0xADBAC7FF, 0x2D333BFF);
-		initcol(&cols[Lsep],  0xADBAC7FF, 0x263549FF);
-		initcol(&cols[Ladd],  0xADBAC7FF, 0x273732FF);
-		initcol(&cols[Ldel],  0xADBAC7FF, 0x3F2D32FF);
-		initcol(&cols[Lnone], 0xADBAC7FF, 0x22272EFF);
+		initcol(&scrlcol,     DBlack, 0x999999FF^(~0xFF));
+		initcol(&cols[Lfile], DWhite, 0x333333FF);
+		initcol(&cols[Lsep],  DBlack, DPurpleblue);
+		initcol(&cols[Ladd],  DWhite, 0x002800FF);
+		initcol(&cols[Ldel],  DWhite, 0x3F0000FF);
+		initcol(&cols[Lnone], DWhite, DBlack);
 	}else{
 		initcol(&scrlcol,     DWhite, 0x999999FF);
 		initcol(&cols[Lfile], DBlack, 0xEFEFEFFF);
