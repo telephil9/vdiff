@@ -2,7 +2,8 @@
 #include <libc.h>
 #include <plumb.h>
 #include <draw.h>
-#include <event.h>
+#include <thread.h>
+#include <mouse.h>
 #include <keyboard.h>
 #include <bio.h>
 
@@ -40,6 +41,8 @@ enum
 	Vpadding = 2,
 };
 
+Mousectl *mctl;
+Keyboardctl *kctl;
 Rectangle sr;
 Rectangle scrollr;
 Rectangle scrposr;
@@ -107,6 +110,7 @@ redraw(void)
 		lr = Rect(textr.min.x, textr.min.y+i*lineh, textr.max.x, textr.min.y+(i+1)*lineh);
 		drawline(lr, lines[offset+i]);
 	}
+	flushimage(display, 1);
 }
 
 void
@@ -152,9 +156,9 @@ indexat(Point p)
 }
 
 void
-eresized(int new)
+eresize(void)
 {
-	if(new && getwindow(display, Refnone)<0)
+	if(getwindow(display, Refnone)<0)
 		sysfatal("cannot reattach: %r");
 	sr = screen->r;
 	scrollr = sr;
@@ -328,10 +332,18 @@ usage(void)
 }
 
 void
-main(int argc, char *argv[])
+threadmain(int argc, char *argv[])
 {
-	Event ev;
-	int e, n, b;
+	enum { Emouse, Eresize, Ekeyboard, };
+	Mouse m;
+	Rune k;
+	Alt a[] = {
+		{ nil, &m,  CHANRCV },
+		{ nil, nil, CHANRCV },
+		{ nil, &k,  CHANRCV },
+		{ nil, nil, CHANEND },
+	};
+	int n, b;
 
 	b = 0;
 	ARGBEGIN{
@@ -350,28 +362,34 @@ main(int argc, char *argv[])
 	}
 	if(initdraw(nil, nil, "vdiff")<0)
 		sysfatal("initdraw: %r");
+	display->locking = 0;
+	if((mctl = initmouse(nil, screen)) == nil)
+		sysfatal("initmouse: %r");
+	if((kctl = initkeyboard(nil)) == nil)
+		sysfatal("initkeyboard: %r");
+	a[Emouse].c = mctl->c;
+	a[Eresize].c = mctl->resizec;
+	a[Ekeyboard].c = kctl->c;
 	initcols(b);
-	einit(Emouse|Ekeyboard);
-	eresized(0);
+	eresize();
 	for(;;){
-		e = event(&ev);
-		switch(e){
+		switch(alt(a)){
 		case Emouse:
-			if(ptinrect(ev.mouse.xy, scrollr)){
-				if(ev.mouse.buttons&1){
-					n = (ev.mouse.xy.y - scrollr.min.y) / lineh;
+			if(ptinrect(m.xy, scrollr)){
+				if(m.buttons&1){
+					n = (m.xy.y - scrollr.min.y) / lineh;
 					if(-n<lcount-offset){
 						scroll(-n);
 					} else {
 						scroll(-lcount+offset);
 					}
 					break;
-				}else if(ev.mouse.buttons&2){
-					n = (ev.mouse.xy.y - scrollr.min.y) * lcount / Dy(scrollr);
+				}else if(m.buttons&2){
+					n = (m.xy.y - scrollr.min.y) * lcount / Dy(scrollr);
 					offset = n;
 					redraw();
-				}else if(ev.mouse.buttons&4){
-					n = (ev.mouse.xy.y - scrollr.min.y) / lineh;
+				}else if(m.buttons&4){
+					n = (m.xy.y - scrollr.min.y) / lineh;
 					if(n<lcount-offset){
 						scroll(n);
 					} else {
@@ -380,20 +398,23 @@ main(int argc, char *argv[])
 					break;
 				}
 			}
-			if(ev.mouse.buttons&4){
-				n = indexat(ev.mouse.xy);
+			if(m.buttons&4){
+				n = indexat(m.xy);
 				if(n>=0 && lines[n+offset]->f != nil)
 					plumb(lines[n+offset]->f, lines[n+offset]->l);
-			}else if(ev.mouse.buttons&8)
+			}else if(m.buttons&8)
 				scroll(-scrollsize);
-			else if(ev.mouse.buttons&16)
+			else if(m.buttons&16)
 				scroll(scrollsize);
 			break;
+		case Eresize:
+			eresize();
+			break;
 		case Ekeyboard:
-			switch(ev.kbdc){
+			switch(k){
 			case 'q':
 			case Kdel:
-				goto End;
+				threadexitsall(nil);
 				break;
 			case Khome:
 				scroll(-1000000);
@@ -423,6 +444,4 @@ main(int argc, char *argv[])
 			break;
 		}
 	}
-End:
-	exits(nil);
 }
