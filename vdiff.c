@@ -54,6 +54,8 @@ int scrollsize;
 int lineh;
 int nlines;
 int offset;
+int scrolling;
+int oldbuttons;
 Line **lines;
 int lsize;
 int lcount;
@@ -143,6 +145,15 @@ pan(int off)
 }
 
 void
+clampoffset(void)
+{
+	if(offset<0)
+		offset = 0;
+	if(offset+nlines>lcount)
+		offset = lcount-nlines+1;
+}
+
+void
 scroll(int off)
 {
 	if(off<0 && offset<=0)
@@ -150,10 +161,7 @@ scroll(int off)
 	if(off>0 && offset+nlines>lcount)
 		return;
 	offset += off;
-	if(offset<0)
-		offset = 0;
-	if(offset+nlines>lcount)
-		offset = lcount-nlines+1;
+	clampoffset();
 	redraw();
 }
 
@@ -229,7 +237,12 @@ emouse(Mouse m)
 {
 	int n;
 
-	if(ptinrect(m.xy, scrollr)){
+	if(oldbuttons == 0 && m.buttons != 0 && ptinrect(m.xy, scrollr))
+		scrolling = 1;
+	else if(m.buttons == 0)
+		scrolling = 0;
+
+	if(scrolling){
 		if(m.buttons&1){
 			n = (m.xy.y - scrollr.min.y) / lineh;
 			if(-n<lcount-offset){
@@ -241,6 +254,7 @@ emouse(Mouse m)
 		}else if(m.buttons&2){
 			n = (m.xy.y - scrollr.min.y) * lcount / Dy(scrollr);
 			offset = n;
+			clampoffset();
 			redraw();
 		}else if(m.buttons&4){
 			n = (m.xy.y - scrollr.min.y) / lineh;
@@ -251,15 +265,17 @@ emouse(Mouse m)
 			}
 			return;
 		}
+	}else{
+		if(m.buttons&4){
+			n = indexat(m.xy);
+			if(n>=0 && lines[n+offset]->f != nil)
+				plumb(lines[n+offset]->f, lines[n+offset]->l);
+		}else if(m.buttons&8)
+			scroll(-scrollsize);
+		else if(m.buttons&16)
+			scroll(scrollsize);
 	}
-	if(m.buttons&4){
-		n = indexat(m.xy);
-		if(n>=0 && lines[n+offset]->f != nil)
-			plumb(lines[n+offset]->f, lines[n+offset]->l);
-	}else if(m.buttons&8)
-		scroll(-scrollsize);
-	else if(m.buttons&16)
-		scroll(scrollsize);
+	oldbuttons = m.buttons;
 }
 
 void
@@ -417,6 +433,8 @@ threadmain(int argc, char *argv[])
 	};
 	int b;
 
+	scrolling = 0;
+	oldbuttons = 0;
 	b = 0;
 	ARGBEGIN{
 	case 'b':
