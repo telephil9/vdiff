@@ -62,6 +62,21 @@ int Δpan;
 const char ellipsis[] = "...";
 
 void
+plumb(char *f, int l)
+{
+	int fd;
+	char wd[256], addr[300]={0};
+
+	fd = plumbopen("send", OWRITE);
+	if(fd<0)
+		return;
+	getwd(wd, sizeof wd);
+	snprint(addr, sizeof addr, "%s:%d", f, l);
+	plumbsendtext(fd, "vdiff", "edit", wd, addr);
+	close(fd);
+}
+
+void
 drawline(Rectangle r, Line *l)
 {
 	Point p;
@@ -172,6 +187,79 @@ eresize(void)
 	if(offset > 0 && offset+nlines>lcount)
 		offset = lcount-nlines+1;
 	redraw();
+}
+
+void
+ekeyboard(Rune k)
+{
+	switch(k){
+	case 'q':
+	case Kdel:
+		threadexitsall(nil);
+		break;
+	case Khome:
+		scroll(-1000000);
+		break;
+	case Kend:
+		scroll(1000000);
+		break;
+	case Kpgup:
+		scroll(-nlines);
+		break;
+	case Kpgdown:
+		scroll(nlines);
+		break;
+	case Kup:
+		scroll(-1);
+		break;
+	case Kdown:
+		scroll(1);
+		break;
+	case Kleft:
+		pan(-4);
+		break;
+	case Kright:
+		pan(4);
+		break;
+	}
+}
+
+void
+emouse(Mouse m)
+{
+	int n;
+
+	if(ptinrect(m.xy, scrollr)){
+		if(m.buttons&1){
+			n = (m.xy.y - scrollr.min.y) / lineh;
+			if(-n<lcount-offset){
+				scroll(-n);
+			} else {
+				scroll(-lcount+offset);
+			}
+			return;
+		}else if(m.buttons&2){
+			n = (m.xy.y - scrollr.min.y) * lcount / Dy(scrollr);
+			offset = n;
+			redraw();
+		}else if(m.buttons&4){
+			n = (m.xy.y - scrollr.min.y) / lineh;
+			if(n<lcount-offset){
+				scroll(n);
+			} else {
+				scroll(lcount-offset);
+			}
+			return;
+		}
+	}
+	if(m.buttons&4){
+		n = indexat(m.xy);
+		if(n>=0 && lines[n+offset]->f != nil)
+			plumb(lines[n+offset]->f, lines[n+offset]->l);
+	}else if(m.buttons&8)
+		scroll(-scrollsize);
+	else if(m.buttons&16)
+		scroll(scrollsize);
 }
 
 void
@@ -309,22 +397,6 @@ parse(int fd)
 }
 
 void
-plumb(char *f, int l)
-{
-	USED(l);
-	int fd;
-	char wd[256], addr[300]={0};
-
-	fd = plumbopen("send", OWRITE);
-	if(fd<0)
-		return;
-	getwd(wd, sizeof wd);
-	snprint(addr, sizeof addr, "%s:%d", f, l);
-	plumbsendtext(fd, "vdiff", "edit", wd, addr);
-	close(fd);
-}
-
-void
 usage(void)
 {
 	fprint(2, "%s [-b]\n", argv0);
@@ -343,7 +415,7 @@ threadmain(int argc, char *argv[])
 		{ nil, &k,  CHANRCV },
 		{ nil, nil, CHANEND },
 	};
-	int n, b;
+	int b;
 
 	b = 0;
 	ARGBEGIN{
@@ -375,72 +447,13 @@ threadmain(int argc, char *argv[])
 	for(;;){
 		switch(alt(a)){
 		case Emouse:
-			if(ptinrect(m.xy, scrollr)){
-				if(m.buttons&1){
-					n = (m.xy.y - scrollr.min.y) / lineh;
-					if(-n<lcount-offset){
-						scroll(-n);
-					} else {
-						scroll(-lcount+offset);
-					}
-					break;
-				}else if(m.buttons&2){
-					n = (m.xy.y - scrollr.min.y) * lcount / Dy(scrollr);
-					offset = n;
-					redraw();
-				}else if(m.buttons&4){
-					n = (m.xy.y - scrollr.min.y) / lineh;
-					if(n<lcount-offset){
-						scroll(n);
-					} else {
-						scroll(lcount-offset);
-					}
-					break;
-				}
-			}
-			if(m.buttons&4){
-				n = indexat(m.xy);
-				if(n>=0 && lines[n+offset]->f != nil)
-					plumb(lines[n+offset]->f, lines[n+offset]->l);
-			}else if(m.buttons&8)
-				scroll(-scrollsize);
-			else if(m.buttons&16)
-				scroll(scrollsize);
+			emouse(m);
 			break;
 		case Eresize:
 			eresize();
 			break;
 		case Ekeyboard:
-			switch(k){
-			case 'q':
-			case Kdel:
-				threadexitsall(nil);
-				break;
-			case Khome:
-				scroll(-1000000);
-				break;
-			case Kend:
-				scroll(1000000);
-				break;
-			case Kpgup:
-				scroll(-nlines);
-				break;
-			case Kpgdown:
-				scroll(nlines);
-				break;
-			case Kup:
-				scroll(-1);
-				break;
-			case Kdown:
-				scroll(1);
-				break;
-			case Kleft:
-				pan(-4);
-				break;
-			case Kright:
-				pan(4);
-				break;
-			}
+			ekeyboard(k);
 			break;
 		}
 	}
